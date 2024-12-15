@@ -141,21 +141,21 @@ class PolyRegression(nn.Module):
         return output_size
 
     def forward(self, x, epoch=None):
-        print(f"Input shape: {x.shape}")  # Debug
+        # print(f"Input shape: {x.shape}")  # Debug
         features = self.model.features(x)  # Extract features from backbone
-        print(f"Shape after backbone: {features.shape}")  # Debug
+        # print(f"Shape after backbone: {features.shape}")  # Debug
 
         if self.use_flip_block:
             features = self.feature_flip(features)
-            print(f"Shape after FeatureFlipBlock: {features.shape}")  # Debug
+            # print(f"Shape after FeatureFlipBlock: {features.shape}")  # Debug
 
         # Apply SPP
         features = self.spp(features)
-        print(f"Shape after SPP: {features.shape}")  # Debug
+        # print(f"Shape after SPP: {features.shape}")  # Debug
 
         # Apply SPP projection
         features = self.spp_projection(features)
-        print(f"Shape after SPP Projection: {features.shape}")  # Debug
+        # print(f"Shape after SPP Projection: {features.shape}")  # Debug
 
         # Linear Layer and Self-Attention
         output, extra_outputs = self.output_layer(features)
