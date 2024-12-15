@@ -105,13 +105,13 @@ def train(model, train_loader, exp_dir, cfg, val_loader, train_state=None):
                 logging.info(f"Epoch [{epoch}/{num_epochs}], Step [{i+1}/{total_step}], Loss: {accum_loss / (i+1):.4f} ({loss_str}), s/iter: {np.mean(iter_times):.4f}, lr: {optimizer.param_groups[0]['lr']:.1e}")
                 
                 # Ghi lại các metric huấn luyện lên wandb
-                wandb.log({
-                    'train_loss': accum_loss / (i+1),
-                    **{'train_' + k: v for k, v in loss_dict_i.items()},
-                    's_per_iter': np.mean(iter_times),
-                    'learning_rate': optimizer.param_groups[0]['lr'],
-                    'epoch': epoch,
-                }, step=total_iter)
+                # wandb.log({
+                #     'train_loss': accum_loss / (i+1),
+                #     **{'train_' + k: v for k, v in loss_dict_i.items()},
+                #     's_per_iter': np.mean(iter_times),
+                #     'learning_rate': optimizer.param_groups[0]['lr'],
+                #     'epoch': epoch,
+                # }, step=total_iter)
 
         logging.info(f"Epoch time: {time() - epoch_t0:.4f}")
 
@@ -144,11 +144,11 @@ def train(model, train_loader, exp_dir, cfg, val_loader, train_state=None):
             val_metrics = {f'val_{result["name"]}': result['value'] for result in results if result["name"] in metric_names}
             
             # Ghi lại các chỉ số đánh giá lên wandb
-            wandb.log({
-                'val_loss': val_loss,
-                **val_metrics,
-                'epoch': epoch,
-            }, step=total_iter)
+            # wandb.log({
+            #     'val_loss': val_loss,
+            #     **val_metrics,
+            #     'epoch': epoch,
+            # }, step=total_iter)
 
             # Ghi log các chỉ số đánh giá
             eval_metrics_str = ', '.join(
@@ -181,7 +181,7 @@ def parse_args():
 def get_code_state():
     state = "Git hash: {}".format(
         subprocess.run(['git', 'rev-parse', 'HEAD'], stdout=subprocess.PIPE).stdout.decode('utf-8'))
-    state += '\n*************\nGit diff:\n*************\n'
+    state += '*************Git diff:*************'
     state += subprocess.run(['git', 'diff'], stdout=subprocess.PIPE).stdout.decode('utf-8')
 
     return state
@@ -260,11 +260,11 @@ if __name__ == "__main__":
     sys.excepthook = log_on_exception
 
     # Khởi tạo wandb
-    wandb.init(
-        project="Tên_dự_án_của_bạn",  # Thay bằng tên dự án của bạn trên wandb
-        name=args.exp_name,
-        config=cfg.__dict__ if hasattr(cfg, '__dict__') else cfg
-    )
+    # wandb.init(
+    #     project="Tên_dự_án_của_bạn",  # Thay bằng tên dự án của bạn trên wandb
+    #     name=args.exp_name,
+    #     config=cfg.__dict__ if hasattr(cfg, '__dict__') else cfg
+    # )
 
     logging.info("Experiment name: {}".format(args.exp_name))
     logging.info("Config:\n" + str(cfg))
@@ -320,7 +320,7 @@ if __name__ == "__main__":
         subprocess.run(['rclone', 'copy', exp_root, '{}/{}'.format(cfg['backup'], args.exp_name)])
 
     # Kết thúc phiên làm việc với wandb
-    wandb.finish()
+    # wandb.finish()
 
     # Eval model after training
     test_dataset = cfg.get_dataset("test")
