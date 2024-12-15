@@ -1,7 +1,7 @@
 import yaml
 import torch
 
-import lib.models_FFB_ViT_SPP as models
+import lib.models_FFB_SPP as models
 import lib.datasets as datasets
 
 
