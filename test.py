@@ -16,7 +16,7 @@ from utils.evaluator import Evaluator
 
 def test(model, test_loader, evaluator, exp_root, cfg, view, epoch, max_batches=None, verbose=True):
     if verbose:
-        logging.info("Starting testing.")
+        print("Starting testing.")
 
     # Test the model
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -39,7 +39,7 @@ def test(model, test_loader, evaluator, exp_root, cfg, view, epoch, max_batches=
             if max_batches is not None and idx >= max_batches:
                 break
             if idx % 1 == 0 and verbose:
-                logging.info("Testing iteration: {}/{}".format(idx + 1, len(test_loader)))
+                print("Testing iteration: {}/{}".format(idx + 1, len(test_loader)))
             images = images.to(device)
             labels = labels.to(device)
 
@@ -69,13 +69,13 @@ def test(model, test_loader, evaluator, exp_root, cfg, view, epoch, max_batches=
                 cv2.waitKey(0)
 
     if verbose:
-        logging.info("Testing time: {:.4f}".format(time() - test_t0))
+        print("Testing time: {:.4f}".format(time() - test_t0))
     out_line = []
     for key in loss_dict:
         loss_dict[key] /= total_iters
         out_line.append('{}: {:.4f}'.format(key, loss_dict[key]))
     if verbose:
-        logging.info(', '.join(out_line))
+        print(', '.join(out_line))
 
     return evaluator, loss / total_iters
 
@@ -126,9 +126,9 @@ if __name__ == "__main__":
 
     sys.excepthook = log_on_exception
 
-    logging.info("Experiment name: {}".format(args.exp_name))
-    logging.info("Config:\n" + str(cfg))
-    logging.info("Args:\n" + str(args))
+    print("Experiment name: {}".format(args.exp_name))
+    print("Config:\n" + str(cfg))
+    print("Args:\n" + str(args))
 
     # Device configuration
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -159,9 +159,9 @@ if __name__ == "__main__":
             logging.StreamHandler(),
         ],
     )
-    logging.info('Code state:\n {}'.format(get_code_state()))
+    print('Code state:\n {}'.format(get_code_state()))
     _, mean_loss = test(model, test_loader, evaluator, exp_root, cfg, epoch=test_epoch, view=args.view)
-    logging.info("Mean test loss: {:.4f}".format(mean_loss))
+    print("Mean test loss: {:.4f}".format(mean_loss))
 
     evaluator.exp_name = args.exp_name
 
