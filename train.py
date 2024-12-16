@@ -6,6 +6,7 @@ import logging
 import argparse
 import subprocess
 from time import time
+import tqdm
 
 import numpy as np
 import torch
@@ -75,7 +76,7 @@ def train(model, train_loader, exp_dir, cfg, val_loader, train_state=None):
     # Định nghĩa tên các chỉ số đánh giá dựa trên cấu trúc của results
     metric_names = ['Accuracy', 'FP', 'FN', 'FPS']
 
-    for epoch in range(starting_epoch, num_epochs + 1):
+    for epoch in tqdm.tqdm(range(starting_epoch, num_epochs + 1),desc='Training'):
         epoch_t0 = time()
         print(f"Beginning epoch {epoch}")
         accum_loss = 0
