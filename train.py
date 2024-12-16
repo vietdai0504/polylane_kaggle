@@ -26,7 +26,7 @@ def save_train_state(path, model, optimizer, lr_scheduler, epoch):
         'epoch': epoch
     }
     torch.save(train_state, path)
-    print(f"Checkpoint saved at {path}")
+    # print(f"Checkpoint saved at {path}")
 
 # Hàm load checkpoint để tiếp tục huấn luyện
 def load_checkpoint(model, optimizer, scheduler, checkpoint_path):
@@ -42,7 +42,7 @@ def load_checkpoint(model, optimizer, scheduler, checkpoint_path):
     else:
         raise ValueError(f"Checkpoint tại {checkpoint_path} không có cấu trúc hợp lệ!")
 
-    print(f"Checkpoint loaded from {checkpoint_path}, starting từ epoch {epoch}")
+    # print(f"Checkpoint loaded from {checkpoint_path}, starting từ epoch {epoch}")
     return model, optimizer, scheduler, epoch
 
 # Hàm huấn luyện model
@@ -78,7 +78,7 @@ def train(model, train_loader, exp_dir, cfg, val_loader, train_state=None):
 
     for epoch in tqdm.tqdm(range(starting_epoch, num_epochs + 1),desc='Training'):
         epoch_t0 = time()
-        print(f"Beginning epoch {epoch}")
+        # print(f"Beginning epoch {epoch}")
         accum_loss = 0
         for i, (images, labels, img_idxs) in enumerate(train_loader):
             total_iter += 1
@@ -103,7 +103,7 @@ def train(model, train_loader, exp_dir, cfg, val_loader, train_state=None):
                 loss_str = ', '.join(
                     ['{}: {:.4f}'.format(loss_name, loss_dict_i[loss_name]) for loss_name in loss_dict_i]
                 )
-                print(f"Epoch [{epoch}/{num_epochs}], Step [{i+1}/{total_step}], Loss: {accum_loss / (i+1):.4f} ({loss_str}), s/iter: {np.mean(iter_times):.4f}, lr: {optimizer.param_groups[0]['lr']:.1e}")
+                # print(f"Epoch [{epoch}/{num_epochs}], Step [{i+1}/{total_step}], Loss: {accum_loss / (i+1):.4f} ({loss_str}), s/iter: {np.mean(iter_times):.4f}, lr: {optimizer.param_groups[0]['lr']:.1e}")
                 
                 # Ghi lại các metric huấn luyện lên wandb
                 wandb.log({
