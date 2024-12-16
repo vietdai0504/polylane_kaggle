@@ -25,7 +25,7 @@ def save_train_state(path, model, optimizer, lr_scheduler, epoch):
         'epoch': epoch
     }
     torch.save(train_state, path)
-    logging.info(f"Checkpoint saved at {path}")
+    print(f"Checkpoint saved at {path}")
 
 # Hàm load checkpoint để tiếp tục huấn luyện
 def load_checkpoint(model, optimizer, scheduler, checkpoint_path):
@@ -41,12 +41,12 @@ def load_checkpoint(model, optimizer, scheduler, checkpoint_path):
     else:
         raise ValueError(f"Checkpoint tại {checkpoint_path} không có cấu trúc hợp lệ!")
 
-    logging.info(f"Checkpoint loaded from {checkpoint_path}, starting từ epoch {epoch}")
+    print(f"Checkpoint loaded from {checkpoint_path}, starting từ epoch {epoch}")
     return model, optimizer, scheduler, epoch
 
 # Hàm huấn luyện model
 def train(model, train_loader, exp_dir, cfg, val_loader, train_state=None):
-    logging.info(f"Model structure: {model}")
+    print(f"Model structure: {model}")
     optimizer = cfg.get_optimizer(model.parameters())
     scheduler = cfg.get_lr_scheduler(optimizer)
     starting_epoch = 1
@@ -70,14 +70,14 @@ def train(model, train_loader, exp_dir, cfg, val_loader, train_state=None):
     t0 = time()
     total_iter = 0
     iter_times = []
-    logging.info("Starting training.")
+    print("Starting training.")
     
     # Định nghĩa tên các chỉ số đánh giá dựa trên cấu trúc của results
     metric_names = ['Accuracy', 'FP', 'FN', 'FPS']
 
     for epoch in range(starting_epoch, num_epochs + 1):
         epoch_t0 = time()
-        logging.info(f"Beginning epoch {epoch}")
+        print(f"Beginning epoch {epoch}")
         accum_loss = 0
         for i, (images, labels, img_idxs) in enumerate(train_loader):
             total_iter += 1
@@ -102,18 +102,18 @@ def train(model, train_loader, exp_dir, cfg, val_loader, train_state=None):
                 loss_str = ', '.join(
                     ['{}: {:.4f}'.format(loss_name, loss_dict_i[loss_name]) for loss_name in loss_dict_i]
                 )
-                logging.info(f"Epoch [{epoch}/{num_epochs}], Step [{i+1}/{total_step}], Loss: {accum_loss / (i+1):.4f} ({loss_str}), s/iter: {np.mean(iter_times):.4f}, lr: {optimizer.param_groups[0]['lr']:.1e}")
+                print(f"Epoch [{epoch}/{num_epochs}], Step [{i+1}/{total_step}], Loss: {accum_loss / (i+1):.4f} ({loss_str}), s/iter: {np.mean(iter_times):.4f}, lr: {optimizer.param_groups[0]['lr']:.1e}")
                 
                 # Ghi lại các metric huấn luyện lên wandb
-                # wandb.log({
-                #     'train_loss': accum_loss / (i+1),
-                #     **{'train_' + k: v for k, v in loss_dict_i.items()},
-                #     's_per_iter': np.mean(iter_times),
-                #     'learning_rate': optimizer.param_groups[0]['lr'],
-                #     'epoch': epoch,
-                # }, step=total_iter)
+                wandb.log({
+                    'train_loss': accum_loss / (i+1),
+                    **{'train_' + k: v for k, v in loss_dict_i.items()},
+                    's_per_iter': np.mean(iter_times),
+                    'learning_rate': optimizer.param_groups[0]['lr'],
+                    'epoch': epoch,
+                }, step=total_iter)
 
-        logging.info(f"Epoch time: {time() - epoch_t0:.4f}")
+        print(f"Epoch time: {time() - epoch_t0:.4f}")
 
         # Lưu model sau mỗi epoch
         if epoch % MODEL_SAVE_INTERVAL == 0 or epoch == num_epochs:
@@ -133,8 +133,8 @@ def train(model, train_loader, exp_dir, cfg, val_loader, train_state=None):
                 verbose=False,
             )
             _, results = evaluator.eval(label=None, only_metrics=True)
-            logging.info(f"Validation results: {results}")
-            logging.info(f"Epoch [{epoch}/{num_epochs}], Val loss: {val_loss:.4f}")
+            print(f"Validation results: {results}")
+            print(f"Epoch [{epoch}/{num_epochs}], Val loss: {val_loss:.4f}")
             
             # Đảm bảo rằng số lượng metrics tương ứng
             if len(results) != len(metric_names):
@@ -144,23 +144,23 @@ def train(model, train_loader, exp_dir, cfg, val_loader, train_state=None):
             val_metrics = {f'val_{result["name"]}': result['value'] for result in results if result["name"] in metric_names}
             
             # Ghi lại các chỉ số đánh giá lên wandb
-            # wandb.log({
-            #     'val_loss': val_loss,
-            #     **val_metrics,
-            #     'epoch': epoch,
-            # }, step=total_iter)
+            wandb.log({
+                'val_loss': val_loss,
+                **val_metrics,
+                'epoch': epoch,
+            }, step=total_iter)
 
             # Ghi log các chỉ số đánh giá
             eval_metrics_str = ', '.join(
                 [f"{k}: {v:.4f}" for k, v in val_metrics.items()]
             )
-            logging.info(f"Epoch [{epoch}/{num_epochs}], Val Metrics: {eval_metrics_str}")
+            print(f"Epoch [{epoch}/{num_epochs}], Val Metrics: {eval_metrics_str}")
 
             model.train()
 
         scheduler.step()
 
-    logging.info(f"Training time: {time() - t0:.4f}")
+    print(f"Training time: {time() - t0:.4f}")
 
     return model
 
@@ -222,7 +222,7 @@ def get_exp_train_state(exp_root):
     # Load checkpoint vào model, optimizer, scheduler
     model, optimizer, scheduler, epoch = load_checkpoint(model, optimizer, scheduler, checkpoint_path)
     
-    logging.info(f"Loaded train state from {checkpoint_path} (epoch {epoch})")
+    print(f"Loaded train state from {checkpoint_path} (epoch {epoch})")
     
     return model, optimizer, scheduler, epoch
 
@@ -259,16 +259,18 @@ if __name__ == "__main__":
 
     sys.excepthook = log_on_exception
 
-    # Khởi tạo wandb
-    # wandb.init(
-    #     project="Tên_dự_án_của_bạn",  # Thay bằng tên dự án của bạn trên wandb
-    #     name=args.exp_name,
-    #     config=cfg.__dict__ if hasattr(cfg, '__dict__') else cfg
-    # )
+    wandb.login(key='ff96beaf865ac67641b6a95f63b82eb638832948')
 
-    logging.info("Experiment name: {}".format(args.exp_name))
-    logging.info("Config:\n" + str(cfg))
-    logging.info("Args:\n" + str(args))
+    # Khởi tạo wandb
+    wandb.init(
+        project="Tên_dự_án_của_bạn",  # Thay bằng tên dự án của bạn trên wandb
+        name=args.exp_name,
+        config=cfg.__dict__ if hasattr(cfg, '__dict__') else cfg
+    )
+
+    print("Experiment name: {}".format(args.exp_name))
+    print("Config:\n" + str(cfg))
+    print("Args:\n" + str(args))
 
     # Get data sets
     train_dataset = cfg.get_dataset("train")
@@ -313,14 +315,14 @@ if __name__ == "__main__":
             train_state=train_state,
         )
     except KeyboardInterrupt:
-        logging.info("Training session terminated.")
+        print("Training session terminated.")
 
     test_epoch = -1
     if cfg['backup'] is not None:
         subprocess.run(['rclone', 'copy', exp_root, '{}/{}'.format(cfg['backup'], args.exp_name)])
 
     # Kết thúc phiên làm việc với wandb
-    # wandb.finish()
+    wandb.finish()
 
     # Eval model after training
     test_dataset = cfg.get_dataset("test")
@@ -341,15 +343,15 @@ if __name__ == "__main__":
             logging.StreamHandler(),
         ],
     )
-    logging.info('Code state:\n {}'.format(get_code_state()))
+    print('Code state:\n {}'.format(get_code_state()))
     
     # Tiến hành đánh giá mô hình trên dữ liệu test
     _, mean_loss = test(model, test_loader, evaluator, exp_root, cfg, epoch=test_epoch, view=False)
-    logging.info("Mean test loss: {:.4f}".format(mean_loss))
+    print("Mean test loss: {:.4f}".format(mean_loss))
 
     evaluator.exp_name = args.exp_name  # Lưu tên experiment
 
     # Đánh giá mô hình và ghi kết quả
     eval_str, _ = evaluator.eval(label='{}_{}'.format(os.path.basename(args.exp_name), test_epoch))
 
-    logging.info(eval_str)  # In kết quả đánh giá ra log
+    print(eval_str)  # In kết quả đánh giá ra log
