@@ -6,7 +6,7 @@ import logging
 import argparse
 import subprocess
 from time import time
-import tqdm
+from tqdm import tqdm
 
 import numpy as np
 import torch
