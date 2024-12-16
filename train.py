@@ -76,11 +76,11 @@ def train(model, train_loader, exp_dir, cfg, val_loader, train_state=None):
     # Định nghĩa tên các chỉ số đánh giá dựa trên cấu trúc của results
     metric_names = ['Accuracy', 'FP', 'FN', 'FPS']
 
-    for epoch in tqdm.tqdm(range(starting_epoch, num_epochs + 1),desc='Training'):
+    for epoch in range(starting_epoch, num_epochs + 1):
         epoch_t0 = time()
         # print(f"Beginning epoch {epoch}")
         accum_loss = 0
-        for i, (images, labels, img_idxs) in enumerate(train_loader):
+        for i, (images, labels, img_idxs) in enumerate(tqdm(train_loader, desc="Training Progress")):
             total_iter += 1
             iter_t0 = time()
             images = images.to(device)
