@@ -78,7 +78,7 @@ def train(model, train_loader, exp_dir, cfg, val_loader, train_state=None):
 
     for epoch in range(starting_epoch, num_epochs + 1):
         epoch_t0 = time()
-        # print(f"Beginning epoch {epoch}")
+        print(f"Beginning epoch {epoch}")
         accum_loss = 0
         for i, (images, labels, img_idxs) in enumerate(tqdm(train_loader, desc="Training Progress")):
             total_iter += 1
