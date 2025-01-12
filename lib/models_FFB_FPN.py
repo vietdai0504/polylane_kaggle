@@ -143,11 +143,6 @@ class PolyRegression(nn.Module):
 
         return fpn_output, extra_outputs
 
-
-
-
-
-
     def decode(self, all_outputs, labels, conf_threshold=0.5):
         outputs, extra_outputs = all_outputs
         if extra_outputs is not None:

@@ -6,7 +6,6 @@ import logging
 import argparse
 import subprocess
 from time import time
-from tqdm import tqdm
 
 import numpy as np
 import torch
@@ -26,7 +25,7 @@ def save_train_state(path, model, optimizer, lr_scheduler, epoch):
         'epoch': epoch
     }
     torch.save(train_state, path)
-    # print(f"Checkpoint saved at {path}")
+    print(f"Checkpoint saved at {path}")
 
 # Hàm load checkpoint để tiếp tục huấn luyện
 def load_checkpoint(model, optimizer, scheduler, checkpoint_path):
@@ -42,7 +41,7 @@ def load_checkpoint(model, optimizer, scheduler, checkpoint_path):
     else:
         raise ValueError(f"Checkpoint tại {checkpoint_path} không có cấu trúc hợp lệ!")
 
-    # print(f"Checkpoint loaded from {checkpoint_path}, starting từ epoch {epoch}")
+    print(f"Checkpoint loaded from {checkpoint_path}, starting từ epoch {epoch}")
     return model, optimizer, scheduler, epoch
 
 # Hàm huấn luyện model
@@ -80,7 +79,7 @@ def train(model, train_loader, exp_dir, cfg, val_loader, train_state=None):
         epoch_t0 = time()
         print(f"Beginning epoch {epoch}")
         accum_loss = 0
-        for i, (images, labels, img_idxs) in enumerate(tqdm(train_loader, desc="Training Progress")):
+        for i, (images, labels, img_idxs) in enumerate(train_loader):
             total_iter += 1
             iter_t0 = time()
             images = images.to(device)
@@ -103,7 +102,7 @@ def train(model, train_loader, exp_dir, cfg, val_loader, train_state=None):
                 loss_str = ', '.join(
                     ['{}: {:.4f}'.format(loss_name, loss_dict_i[loss_name]) for loss_name in loss_dict_i]
                 )
-                # print(f"Epoch [{epoch}/{num_epochs}], Step [{i+1}/{total_step}], Loss: {accum_loss / (i+1):.4f} ({loss_str}), s/iter: {np.mean(iter_times):.4f}, lr: {optimizer.param_groups[0]['lr']:.1e}")
+                print(f"Epoch [{epoch}/{num_epochs}], Step [{i+1}/{total_step}], Loss: {accum_loss / (i+1):.4f} ({loss_str}), s/iter: {np.mean(iter_times):.4f}, lr: {optimizer.param_groups[0]['lr']:.1e}")
                 
                 # Ghi lại các metric huấn luyện lên wandb
                 wandb.log({
@@ -182,7 +181,7 @@ def parse_args():
 def get_code_state():
     state = "Git hash: {}".format(
         subprocess.run(['git', 'rev-parse', 'HEAD'], stdout=subprocess.PIPE).stdout.decode('utf-8'))
-    state += '*************Git diff:*************'
+    state += '\n*************\nGit diff:\n*************\n'
     state += subprocess.run(['git', 'diff'], stdout=subprocess.PIPE).stdout.decode('utf-8')
 
     return state
@@ -195,7 +194,7 @@ def setup_exp_dir(exps_dir, exp_name, cfg_path):
         os.makedirs(os.path.join(exp_root, dirname), exist_ok=True)
 
     shutil.copyfile(cfg_path, os.path.join(exp_root, 'config.yaml'))
-    with open(os.path.join(exp_root, 'code_state.txt'), 'w') as file:
+    with open(os.path.join(exp_root, 'code_state.txt'), 'w', encoding='utf-8') as file:  # Specify encoding as 'utf-8'
         file.write(get_code_state())
 
     return exp_root
@@ -259,8 +258,6 @@ if __name__ == "__main__":
     )
 
     sys.excepthook = log_on_exception
-
-    wandb.login(key='ff96beaf865ac67641b6a95f63b82eb638832948')
 
     # Khởi tạo wandb
     wandb.init(
