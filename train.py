@@ -6,15 +6,28 @@ import logging
 import argparse
 import subprocess
 from time import time
-
 import numpy as np
 import torch
-
 import wandb  # Thêm import wandb
-
 from test import test
 from lib.config import Config
 from utils.evaluator import Evaluator
+from datetime import datetime
+import pytz
+import string
+
+# Tạo một ID ngẫu nhiên với độ dài cố định (ví dụ: 10 ký tự)
+def generate_random_id(length=10):
+    characters = string.ascii_letters + string.digits  # Bao gồm chữ cái và số
+    return ''.join(random.choice(characters) for _ in range(length))
+
+random_id = generate_random_id()
+utc_time = datetime.now(pytz.utc)
+local_tz = pytz.timezone("Asia/Ho_Chi_Minh")
+local_time = utc_time.astimezone(local_tz)
+time_id = local_time.strftime("%Y_%m_%d_%H_%M_%S")
+
+id_train = random_id + time_id
 
 # Hàm lưu trạng thái huấn luyện (model, optimizer, lr_scheduler)
 def save_train_state(path, model, optimizer, lr_scheduler, epoch):
@@ -75,6 +88,9 @@ def train(model, train_loader, exp_dir, cfg, val_loader, train_state=None):
     # Định nghĩa tên các chỉ số đánh giá dựa trên cấu trúc của results
     metric_names = ['Accuracy', 'FP', 'FN', 'FPS']
 
+    # Biến để theo dõi loss tốt nhất
+    best_accuracy = 0
+
     for epoch in range(starting_epoch, num_epochs + 1):
         epoch_t0 = time()
         print(f"Beginning epoch {epoch}")
@@ -115,11 +131,7 @@ def train(model, train_loader, exp_dir, cfg, val_loader, train_state=None):
 
         print(f"Epoch time: {time() - epoch_t0:.4f}")
 
-        # Lưu model sau mỗi epoch
-        if epoch % MODEL_SAVE_INTERVAL == 0 or epoch == num_epochs:
-            model_path = os.path.join(exp_dir, "models", f"model_{epoch:03d}.pt")
-            save_train_state(model_path, model, optimizer, scheduler, epoch)
-
+        # Đánh giá trên validation set (nếu có)
         if val_loader is not None:
             evaluator = Evaluator(val_loader.dataset, exp_root)
             evaluator, val_loss = test(
@@ -132,9 +144,10 @@ def train(model, train_loader, exp_dir, cfg, val_loader, train_state=None):
                 epoch=-1,
                 verbose=False,
             )
-            _, results = evaluator.eval(label=None, only_metrics=True)
+            _, results = evaluator.eval(label=None, only_metrics=True) # results = [{'name': accuracy, 'value': 0.38}, ]
             print(f"Validation results: {results}")
             print(f"Epoch [{epoch}/{num_epochs}], Val loss: {val_loss:.4f}")
+            accuracy = results[0]['value']
             
             # Đảm bảo rằng số lượng metrics tương ứng
             if len(results) != len(metric_names):
@@ -155,7 +168,70 @@ def train(model, train_loader, exp_dir, cfg, val_loader, train_state=None):
                 [f"{k}: {v:.4f}" for k, v in val_metrics.items()]
             )
             print(f"Epoch [{epoch}/{num_epochs}], Val Metrics: {eval_metrics_str}")
+            print(f"Val_Accuracy: {accuracy}, Best_Accuracy: {best_accuracy}")
 
+            if epoch % MODEL_SAVE_INTERVAL == 0 or epoch == num_epochs:
+                model_path = os.path.join(exp_dir, "models", f"model_{epoch:03d}.pt")
+                save_train_state(model_path, model, optimizer, scheduler, epoch)
+                api = wandb.Api()
+
+                # Thay thế bằng thông tin cụ thể của bạn
+                entity = "suyy-DUT"  # Tên tài khoản hoặc tổ chức
+                project = "Polylanenet"  # Tên dự án
+                artifact_name = f"last_model_{id_train}"  # Tên artifact (ví dụ: "best_model")
+                artifact_type = "model"  # Loại artifact (ví dụ: "model")
+
+                try:
+                    artifacts = api.artifacts(name=f"{entity}/{project}/{artifact_name}", type_name = artifact_type)
+                    for artifact in artifacts:
+                        artifact.delete(delete_aliases=True)
+                except wandb.errors.CommError as e:
+                    print(f"Error accessing artifact: {e}")
+                except Exception as e:
+                    print(f"Unexpected error: {e}")
+                artifact = wandb.Artifact(name=f"last_model_{id_train}", type="model")
+                artifact.add_file(local_path=model_path)
+                artifact.save()
+                print(f"Saved new artifact: last_model.pt")
+
+            # Kiểm tra nếu val_loss tốt hơn
+            if accuracy > best_accuracy:
+                best_accuracy = accuracy  # Cập nhật loss tốt nhất
+                print(f"New best model found at epoch {epoch}, saving model...")
+
+                # Lưu trạng thái mô hình tốt nhất
+                model_path = os.path.join(exp_dir, "models", "best_model.pt")
+                save_train_state(model_path, model, optimizer, scheduler, epoch)
+                
+                api = wandb.Api()
+
+                # Thay thế bằng thông tin cụ thể của bạn
+                entity = "suyy-DUT"  # Tên tài khoản hoặc tổ chức
+                project = "Polylanenet"  # Tên dự án
+                artifact_name = f"best_model_{id_train}"  # Tên artifact (ví dụ: "best_model")
+                artifact_type = "model"  # Loại artifact (ví dụ: "model")
+
+                try:
+                    artifacts = api.artifacts(name=f"{entity}/{project}/{artifact_name}", type_name = artifact_type)
+                    
+                    # Xóa từng artifact
+                    for artifact in artifacts:
+                        print(f"Deleting artifact: {artifact.name}")
+                        artifact.delete(delete_aliases=True)
+                        print(f"Deleted artifact: {artifact.name}")
+
+                except wandb.errors.CommError as e:
+                    print(f"Error accessing artifact: {e}")
+                except Exception as e:
+                    print(f"Unexpected error: {e}")
+
+                # Lưu phiên bản artifact mới
+                artifact = wandb.Artifact(name=f"best_model_{id_train}", type="model")
+                artifact.add_file(local_path=model_path)
+                artifact.save()
+                print(f"Saved new artifact: {artifact_name}")
+            model_path = model_path = os.path.join(exp_dir, "models", f"model_{epoch:03d}.pt")
+            os.remove(model_path)
             model.train()
 
         scheduler.step()
@@ -202,8 +278,8 @@ def setup_exp_dir(exps_dir, exp_name, cfg_path):
 # Hàm lấy trạng thái huấn luyện từ checkpoint
 def get_exp_train_state(exp_root):
     models_dir = os.path.join(exp_root, "models")
-    models = [name for name in os.listdir(models_dir) if name.endswith(".pt")]
-    
+    models = [name for name in os.listdir(models_dir) if name.endswith(".pt") and name != "best_model.pt"]
+    # print(models)
     if not models:
         logging.warning("No checkpoint found!")
         return None
@@ -225,6 +301,27 @@ def get_exp_train_state(exp_root):
     print(f"Loaded train state from {checkpoint_path} (epoch {epoch})")
     
     return model, optimizer, scheduler, epoch
+
+# def get_exp_train_state(exp_root):
+#     models_dir = os.path.join(exp_root, "models")
+#     best_model_path = os.path.join(models_dir, "best_model.pt")
+    
+#     if not os.path.exists(best_model_path):
+#         logging.warning("No best_model.pt checkpoint found!")
+#         return None
+
+#     # Khởi tạo model, optimizer và scheduler
+#     model = cfg.get_model().to(device)  # Khởi tạo model trước khi load
+#     optimizer = cfg.get_optimizer(model.parameters())  # Khởi tạo optimizer
+#     scheduler = cfg.get_lr_scheduler(optimizer)  # Khởi tạo scheduler
+
+#     # Load checkpoint vào model, optimizer, scheduler
+#     model, optimizer, scheduler, epoch = load_checkpoint(model, optimizer, scheduler, best_model_path)
+    
+#     print(f"Loaded train state from {best_model_path} (epoch {epoch})")
+    
+#     return model, optimizer, scheduler, epoch
+
 
 def log_on_exception(exc_type, exc_value, exc_traceback):
     logging.error("Uncaught exception", exc_info=(exc_type, exc_value, exc_traceback))
@@ -261,7 +358,7 @@ if __name__ == "__main__":
 
     # Khởi tạo wandb
     wandb.init(
-        project="Tên_dự_án_của_bạn",  # Thay bằng tên dự án của bạn trên wandb
+        project="Polylanenet",  # Thay bằng tên dự án của bạn trên wandb
         name=args.exp_name,
         config=cfg.__dict__ if hasattr(cfg, '__dict__') else cfg
     )
@@ -301,6 +398,8 @@ if __name__ == "__main__":
                                                  num_workers=8)
     else:
         val_loader = None  # Thêm dòng này để đảm bảo val_loader được định nghĩa
+
+    last_epoch = 1
 
     # Train regressor
     try:
