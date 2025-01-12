@@ -1,7 +1,7 @@
 import yaml
 import torch
 
-import lib.models_BiFPN as models
+import lib.models as models
 import lib.datasets as datasets
 
 
